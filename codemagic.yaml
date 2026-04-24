@@ -6,10 +6,12 @@ workflows:
     environment:
       node: 18
       xcode: latest
+      groups:
+        - appstore-connect                    # ← Must match your environment group name
 
       vars:
         XCODE_SCHEME: "Darklick"
-        BUNDLE_ID: "com.darklick.yourapp"
+        BUNDLE_ID: "com.darklick.yourapp"    # ← Change this to your real bundle ID
 
     scripts:
       - name: Install dependencies
@@ -22,43 +24,12 @@ workflows:
           pod install
           cd ..
 
-      # ✅ Auto-detect workspace (prevents YourApp.xcworkspace issue)
-      - name: Detect Xcode workspace
-        script: |
-          WORKSPACE=$(find ios -name "*.xcworkspace" | head -1)
-          echo "Detected workspace: $WORKSPACE"
-          echo "WORKSPACE=$WORKSPACE" >> $CM_ENV
-
       - name: Build iOS archive
         script: |
-          xcodebuild \a
-            -workspace "$WORKSPACE" \
-            -scheme "$XCODE_SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath build/$XCODE_SCHEME.xcarchive archive
-
-      # ✅ Create exportOptions.plist dynamically (avoids missing file error)
-      - name: Create exportOptions.plist
-        script: |
-          cat > ios/exportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-           "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-          </dict>
-          </plist>
-          EOF
-
-      - name: Export IPA
-        script: |
-          xcodebuild -exportArchive \
-            -archivePath build/$XCODE_SCHEME.xcarchive \
-            -exportOptionsPlist ios/exportOptions.plist \
-            -exportPath build
+          xcode-project build-ipa \
+            --workspace "ios/Runner.xcworkspace" \
+            --scheme "$XCODE_SCHEME" \
+            --export-method app-store
 
     artifacts:
       - build/**/*.ipa
@@ -66,9 +37,8 @@ workflows:
     publishing:
       app_store_connect:
         api_key: 48MDJK7UF8
-        issuer_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
-        key_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K
-
+        key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
+        issuer_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K
       email:
         recipients:
           - excerptechnologies1@gmail.com
