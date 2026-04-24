@@ -1,47 +1,58 @@
-# Codemagic configuration for iOS Release Build
-# This file automates iOS build and deployment using Codemagic CI/CD.
-#
-# For Expo/React Native projects, you must have the ios/ folder (with .xcworkspace, Podfile, etc.) checked into your repo.
-#
-# If you do not have a Mac, generate the ios/ folder on a Mac or Linux, then push it to your repo.
-
 workflows:
   ios-release:
-    name: iOS Release Build
-    max_build_duration: 60  # Maximum build time in minutes
+    name: iOS Release Build (Darklick)
+    max_build_duration: 60
 
     environment:
+      node: 18
+      xcode: latest
+
       vars:
-        # Path to your Xcode workspace (auto-detect or update as needed)
-        XCODE_WORKSPACE: "ios/YourApp.xcworkspace"
-        # Xcode scheme name (update to match your app)
         XCODE_SCHEME: "Darklick"
-        # Bundle identifier (can be set via Codemagic UI or env vars)
         BUNDLE_ID: "com.darklick.yourapp"
-        # App Store Connect API credentials (set these as Codemagic environment variables)
-        APP_STORE_CONNECT_ISSUER_ID: ${{APP_STORE_CONNECT_ISSUER_ID}}
-        APP_STORE_CONNECT_KEY_IDENTIFIER: ${{APP_STORE_CONNECT_KEY_IDENTIFIER}}
-        APP_STORE_CONNECT_PRIVATE_KEY: ${{APP_STORE_CONNECT_PRIVATE_KEY}}
-      node: 18  # Node.js version
-      xcode: latest  # Use latest Xcode (mac_mini_m1 instance)
 
     scripts:
-      - name: Install npm dependencies
+      - name: Install dependencies
         script: |
           npm install
-      - name: Install CocoaPods dependencies
+
+      - name: Install CocoaPods
         script: |
           cd ios
           pod install
           cd ..
-      - name: Build iOS app (archive)
+
+      # ✅ Auto-detect workspace (prevents YourApp.xcworkspace issue)
+      - name: Detect Xcode workspace
+        script: |
+          WORKSPACE=$(find ios -name "*.xcworkspace" | head -1)
+          echo "Detected workspace: $WORKSPACE"
+          echo "WORKSPACE=$WORKSPACE" >> $CM_ENV
+
+      - name: Build iOS archive
         script: |
           xcodebuild \
-            -workspace $XCODE_WORKSPACE \
-            -scheme $XCODE_SCHEME \
+            -workspace "$WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
             -configuration Release \
             -sdk iphoneos \
             -archivePath build/$XCODE_SCHEME.xcarchive archive
+
+      # ✅ Create exportOptions.plist dynamically (avoids missing file error)
+      - name: Create exportOptions.plist
+        script: |
+          cat > ios/exportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+           "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+          </dict>
+          </plist>
+          EOF
+
       - name: Export IPA
         script: |
           xcodebuild -exportArchive \
@@ -50,32 +61,14 @@ workflows:
             -exportPath build
 
     artifacts:
-      - build/**/*.ipa  # Collect the generated IPA file
+      - build/**/*.ipa
 
     publishing:
       app_store_connect:
         api_key: ${{APP_STORE_CONNECT_PRIVATE_KEY}}
         issuer_id: ${{APP_STORE_CONNECT_ISSUER_ID}}
         key_id: ${{APP_STORE_CONNECT_KEY_IDENTIFIER}}
+
       email:
         recipients:
-          - excerptechnologies1@gmail.com  # Update with your email
-
-# ---
-# How to use this file:
-# 1. Place this file as codemagic.yaml in your project root.
-# 2. Set the following environment variables in Codemagic UI:
-#    - APP_STORE_CONNECT_ISSUER_ID
-#    - APP_STORE_CONNECT_KEY_IDENTIFIER
-#    - APP_STORE_CONNECT_PRIVATE_KEY
-# 3. Update XCODE_WORKSPACE and XCODE_SCHEME if your app name is different.
-# 4. Push your ios/ folder to GitHub (must be generated on macOS/Linux).
-# 5. Start a build in Codemagic.
-#
-# ---
-# Troubleshooting:
-# - If you get 'No such workspace' or 'No such scheme', check the actual .xcworkspace and scheme name in ios/.
-# - If pod install fails, check your Podfile and dependencies.
-# - For signing issues, ensure your App Store Connect API keys are correct and your bundle identifier matches your Apple Developer account.
-#
-# For more info: https://docs.codemagic.io/getting-started/yaml/
+          - excerptechnologies1@gmail.com
