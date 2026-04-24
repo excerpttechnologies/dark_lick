@@ -34,7 +34,7 @@ workflows:
             --platform IOS
 
           keychain add-certificates
-          xcode-project use-profiles
+          xcode-project use-profiles --export-options-plist /Users/builder/clone/ios/exportOptions.plist
 
       - name: Build IPA
         script: |
@@ -45,17 +45,15 @@ workflows:
             -sdk iphoneos \
             -archivePath build/Darklick.xcarchive \
             DEVELOPMENT_TEAM=$TEAM_ID \
-            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_STYLE=Automatic \
             PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID \
-            CODE_SIGN_IDENTITY="iPhone Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="Darklick_AppStore" \
             archive
 
       - name: Export IPA
         script: |
           xcodebuild -exportArchive \
             -archivePath build/Darklick.xcarchive \
-            -exportOptionsPlist ios/exportOptions.plist \
+            -exportOptionsPlist /Users/builder/clone/ios/exportOptions.plist \
             -exportPath build
 
     artifacts:
