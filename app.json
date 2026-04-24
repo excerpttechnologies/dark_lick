@@ -3,7 +3,7 @@
     "name": "Darklick",
     "slug": "Darklick",
     "version": "1.0.0",
-    "scheme": "com.aravinda123.myapp",
+    "scheme": "darklick",           // ✅ short lowercase URL scheme, not a bundle ID
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,11 +17,11 @@
 
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.darklick.yourapp"
+      "bundleIdentifier": "com.darklick.app"   // ✅ real unique bundle ID
     },
 
     "android": {
-      "package": "com.darklick.yourapp",
+      "package": "com.darklick.app",           // ✅ match iOS
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
