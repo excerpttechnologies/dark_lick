@@ -11,7 +11,7 @@ workflows:
 
       vars:
         XCODE_SCHEME: "Darklick"
-        BUNDLE_ID: "com.darklick.yourapp"   # ← Update with your real bundle ID
+        BUNDLE_ID: "com.darklick.yourapp"     # ← Change to your real bundle ID
 
     scripts:
       - name: Install dependencies
@@ -24,28 +24,37 @@ workflows:
           pod install
           cd ..
 
-      # ✅ Auto-detect the correct workspace
+      # Auto-detect workspace
       - name: Detect Xcode workspace
         script: |
-          WORKSPACE=$(find . -name "*.xcworkspace" | head -1)
+          WORKSPACE=$(find . -name "*.xcworkspace" | head -1 || echo "ios/Runner.xcworkspace")
           echo "Detected workspace: $WORKSPACE"
           echo "WORKSPACE=$WORKSPACE" >> $CM_ENV
 
+      # Setup code signing (very important!)
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      # Build IPA
       - name: Build iOS archive
         script: |
           xcode-project build-ipa \
             --workspace "$WORKSPACE" \
-            --scheme "$XCODE_SCHEME" \
-            --export-method app-store
+            --scheme "$XCODE_SCHEME"
 
     artifacts:
+      - build/ios/ipa/*.ipa
       - build/**/*.ipa
 
     publishing:
       app_store_connect:
         api_key: 48MDJK7UF8
         key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
-        issuer_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K
+        issuer_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAI
+kF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJ
+DofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmeP
+HpMjwf5K
       email:
         recipients:
           - excerptechnologies1@gmail.com
