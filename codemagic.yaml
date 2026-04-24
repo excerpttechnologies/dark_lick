@@ -16,47 +16,29 @@ workflows:
         script: |
           npm install
 
-      # ✅ Generate iOS (critical for Windows users)
-      - name: Generate iOS project
-        script: |
-          npx expo prebuild --platform ios --clean
-
       - name: Install CocoaPods
         script: |
           cd ios
           pod install
           cd ..
 
-      # ✅ Debug output (keep this)
-      - name: Debug iOS folder
-        script: |
-          echo "iOS contents:"
-          ls -la ios
-
-      # ✅ Detect workspace safely
-      - name: Detect workspace
+      # ✅ Auto-detect workspace (prevents YourApp.xcworkspace issue)
+      - name: Detect Xcode workspace
         script: |
           WORKSPACE=$(find ios -name "*.xcworkspace" | head -1)
-
-          if [ -z "$WORKSPACE" ]; then
-            echo "❌ Workspace not found"
-            exit 1
-          fi
-
+          echo "Detected workspace: $WORKSPACE"
           echo "WORKSPACE=$WORKSPACE" >> $CM_ENV
 
-      # ✅ Build
-      - name: Build archive
+      - name: Build iOS archive
         script: |
-          xcodebuild \
+          xcodebuild \a
             -workspace "$WORKSPACE" \
             -scheme "$XCODE_SCHEME" \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath build/$XCODE_SCHEME.xcarchive \
-            archive
+            -archivePath build/$XCODE_SCHEME.xcarchive archive
 
-      # ✅ Export config
+      # ✅ Create exportOptions.plist dynamically (avoids missing file error)
       - name: Create exportOptions.plist
         script: |
           cat > ios/exportOptions.plist <<EOF
@@ -71,7 +53,6 @@ workflows:
           </plist>
           EOF
 
-      # ✅ Export IPA
       - name: Export IPA
         script: |
           xcodebuild -exportArchive \
@@ -84,9 +65,9 @@ workflows:
 
     publishing:
       app_store_connect:
-        api_key: ${{APP_STORE_CONNECT_PRIVATE_KEY}}
-        issuer_id: ${{APP_STORE_CONNECT_ISSUER_ID}}
-        key_id: ${{APP_STORE_CONNECT_KEY_IDENTIFIER}}
+        api_key: 48MDJK7UF8
+        issuer_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
+        key_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K
 
       email:
         recipients:
