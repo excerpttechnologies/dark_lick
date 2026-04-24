@@ -13,6 +13,7 @@ workflows:
         TEAM_ID: "5YYR6ZRQTZ"
         APP_STORE_CONNECT_KEY_IDENTIFIER: "HN4XD3PCP2"
         APP_STORE_CONNECT_ISSUER_ID: "48099666-494d-47dc-a15c-f9ecc09cfc21"
+
     scripts:
       - name: Install deps
         script: npm install
@@ -36,12 +37,23 @@ workflows:
           keychain add-certificates
           xcode-project use-profiles
 
-          # Newest profile first
+          # Find newest installed profile
           PROFILE_PATH=$(ls -t ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -1)
-          UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID raw -)
+          echo "Profile path: $PROFILE_PATH"
+
+          # Extract UUID via temp file (avoids pipe/stdin issues)
+          security cms -D -i "$PROFILE_PATH" > /tmp/profile.plist
+          UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /tmp/profile.plist)
           echo "Profile UUID: $UUID"
 
-          # Patch pbxproj directly
+          # Validate UUID was extracted
+          if [ -z "$UUID" ]; then
+            echo "ERROR: UUID extraction failed"
+            cat /tmp/profile.plist
+            exit 1
+          fi
+
+          # Patch pbxproj directly with UUID
           sed -i "" "s/PROVISIONING_PROFILE = .*/PROVISIONING_PROFILE = \"$UUID\";/g" \
             ios/Darklick.xcodeproj/project.pbxproj
           sed -i "" "s/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = \"\";/g" \
@@ -49,7 +61,7 @@ workflows:
           sed -i "" "s/CODE_SIGN_STYLE = .*/CODE_SIGN_STYLE = Manual;/g" \
             ios/Darklick.xcodeproj/project.pbxproj
 
-          # Increment build number
+          # Increment build number using Codemagic's $BUILD_NUMBER
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" \
             ios/Darklick/Info.plist
 
@@ -67,7 +79,6 @@ workflows:
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID \
-            PROVISIONING_PROFILE=$CM_PROVISIONING_PROFILE \
             archive
 
       - name: Export IPA
