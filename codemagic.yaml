@@ -13,43 +13,39 @@ workflows:
         XCODE_SCHEME: "Darklick"
         XCODE_WORKSPACE: "ios/Darklick.xcworkspace"
         BUNDLE_ID: "com.darklick.yourapp"
+        TEAM_ID: "5YYR6ZRQTZ"
 
     scripts:
-      # 1️⃣ Install deps
       - name: Install dependencies
         script: |
           npm install
 
-      # 2️⃣ Generate iOS (REQUIRED)
       - name: Generate iOS project
         script: |
           npx expo prebuild --platform ios --clean
 
-      # 3️⃣ Install pods
       - name: Install CocoaPods
         script: |
           cd ios
           pod install
           cd ..
 
-      # 4️⃣ FORCE REMOVE MANUAL SIGNING (CRITICAL FIX)
-      - name: Fix code signing to Automatic
+      # 🔥 Fix signing mode
+      - name: Fix signing to Automatic
         script: |
-          echo "Fixing signing..."
-
-          # Replace all Manual signing references
           sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' ios/Darklick.xcodeproj/project.pbxproj || true
           sed -i '' 's/ProvisioningStyle = Manual/ProvisioningStyle = Automatic/g' ios/Darklick.xcodeproj/project.pbxproj || true
-
-          # Remove any forced provisioning profile
           sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' ios/Darklick.xcodeproj/project.pbxproj || true
 
-      # 5️⃣ Apply Codemagic profiles
+      # 🔥 SET TEAM ID (THIS FIXES YOUR ERROR)
+      - name: Set Apple Team ID
+        script: |
+          sed -i '' "s/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = $TEAM_ID;/g" ios/Darklick.xcodeproj/project.pbxproj || true
+
       - name: Set up code signing
         script: |
           xcode-project use-profiles
 
-      # 6️⃣ Build (force automatic signing)
       - name: Build IPA
         script: |
           xcodebuild \
@@ -59,9 +55,9 @@ workflows:
             -sdk iphoneos \
             -archivePath build/Darklick.xcarchive \
             CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM=$TEAM_ID \
             archive
 
-      # 7️⃣ Export IPA
       - name: Export IPA
         script: |
           cat > ios/exportOptions.plist <<EOF
@@ -89,7 +85,3 @@ workflows:
         api_key: 48MDJK7UF8
         key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
         issuer_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K
-
-      email:
-        recipients:
-          - excerptechnologies1@gmail.com
