@@ -3,32 +3,28 @@
     "name": "Darklick",
     "slug": "Darklick",
     "version": "1.0.0",
-    "scheme": "darklick",           // ✅ short lowercase URL scheme, not a bundle ID
+    "scheme": "darklick",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.darklick.app"   // ✅ real unique bundle ID
+      "bundleIdentifier": "com.darklick.app"
     },
-
     "android": {
-      "package": "com.darklick.app",           // ✅ match iOS
+      "package": "com.darklick.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
     },
-
     "web": {
       "favicon": "./assets/favicon.png"
     }
