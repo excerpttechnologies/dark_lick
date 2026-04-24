@@ -5,56 +5,37 @@ workflows:
     environment:
       node: 18
       xcode: latest
-      groups:
-        - appstore-connect
 
       vars:
         XCODE_SCHEME: "Darklick"
         XCODE_WORKSPACE: "ios/Darklick.xcworkspace"
-        TEAM_ID: "5YYR6ZRQTZ"
+
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.darklick.app   # ← CHANGE if different
 
     scripts:
-      - name: Install deps
+      - name: Install dependencies
         script: npm install
 
-      - name: Generate iOS
+      - name: Generate iOS project
         script: npx expo prebuild --platform ios --clean
 
-      - name: Install pods
+      - name: Install CocoaPods
         script: |
-          cd ios && pod install && cd ..
+          cd ios
+          pod install
+          cd ..
 
-      - name: Fix signing
+      - name: Build IPA
         script: |
-          sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' ios/Darklick.xcodeproj/project.pbxproj || true
-          sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' ios/Darklick.xcodeproj/project.pbxproj || true
-          sed -i '' "s/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = $TEAM_ID;/g" ios/Darklick.xcodeproj/project.pbxproj || true
-
-      - name: Build IPA (FINAL FIX)
-        script: |
-          xcodebuild \
-            -workspace "$XCODE_WORKSPACE" \
-            -scheme "$XCODE_SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath build/Darklick.xcarchive \
-            -allowProvisioningUpdates \
-            DEVELOPMENT_TEAM=$TEAM_ID \
-            CODE_SIGN_STYLE=Automatic \
-            archive
-
-      - name: Export IPA
-        script: |
-          xcodebuild -exportArchive \
-            -archivePath build/Darklick.xcarchive \
-            -exportOptionsPlist ios/exportOptions.plist \
-            -exportPath build
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
 
     artifacts:
       - build/**/*.ipa
 
     publishing:
       app_store_connect:
-        api_key: 48MDJK7UF8
-        key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
-        issuer_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K
+        submit_to_testflight: true
