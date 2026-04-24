@@ -61,7 +61,8 @@ workflows:
 
     publishing:
       app_store_connect:
-        api_key: HN4XD3PCP2
-        key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
-        issuer_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQglVsI98NsFRNTsRbZVnEGkGIaNtknd3hjtMZ/VlExY62gCgYIKoZIzj0DAQehRANCAAQ0CSkAkJzJnxXQVY/rULL7YV15A0qVhPQ9Ghl/KuMCPpi40DM2LbP0sK9e84sV9VIkPpxszckzj3usGsjIvGg6
+        api_key: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQglVsI98NsFRNTsRbZVnEGkGIaNtknd3hjtMZ/VlExY62gCgYIKoZIzj0DAQehRANCAAQ0CSkAkJzJnxXQVY/rULL7YV15A0qVhPQ9Ghl/KuMCPpi40DM2LbP0sK9e84sV9VIkPpxszckzj3usGsjIvGg6      # ← .p8 contents
+        key_id: HN4XD3PCP2   
+        issuer_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
+      # ← UUID only
         submit_to_testflight: true
