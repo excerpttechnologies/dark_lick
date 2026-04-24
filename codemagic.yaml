@@ -35,18 +35,20 @@ workflows:
             --platform IOS
 
           keychain add-certificates
+
+          # Let Codemagic's tool patch the pbxproj automatically
           xcode-project use-profiles
 
-          # Find newest installed profile
+          # Grab the UUID of the installed profile
           PROFILE_PATH=$(ls -t ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -1)
           echo "Profile path: $PROFILE_PATH"
 
-          # Extract UUID via temp file
           security cms -D -i "$PROFILE_PATH" > /tmp/profile.plist
           UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /tmp/profile.plist)
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" /tmp/profile.plist)
           echo "Profile UUID: $UUID"
+          echo "Profile Name: $PROFILE_NAME"
 
-          # Validate
           if [ -z "$UUID" ]; then
             echo "ERROR: UUID extraction failed"
             cat /tmp/profile.plist
@@ -55,27 +57,31 @@ workflows:
 
           PBXPROJ="ios/Darklick.xcodeproj/project.pbxproj"
 
-          # Print current signing section for debugging
-          echo "=== Current signing settings ==="
+          echo "=== Before patch ==="
           grep -E "CODE_SIGN|PROVISIONING|DEVELOPMENT_TEAM" "$PBXPROJ" || true
 
-          # Force CODE_SIGN_STYLE to Manual everywhere it appears
-          sed -i "" "s/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g" "$PBXPROJ"
-          sed -i "" "s/CODE_SIGN_STYLE = \"Automatic\"/CODE_SIGN_STYLE = Manual/g" "$PBXPROJ"
+          # Set CODE_SIGN_STYLE to Manual for all configurations
+          sed -i "" "s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g" "$PBXPROJ"
+          sed -i "" 's/CODE_SIGN_STYLE = "Automatic";/CODE_SIGN_STYLE = Manual;/g' "$PBXPROJ"
 
-          # If PROVISIONING_PROFILE key exists, update it; if not, we rely on xcodebuild CLI args
+          # Inject DEVELOPMENT_TEAM everywhere it's missing or replace existing
+          sed -i "" "s/DEVELOPMENT_TEAM = \"\";/DEVELOPMENT_TEAM = $TEAM_ID;/g" "$PBXPROJ"
+          sed -i "" "s/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = $TEAM_ID;/g" "$PBXPROJ"
+
+          # Inject provisioning profile UUID
           sed -i "" "s/PROVISIONING_PROFILE = .*/PROVISIONING_PROFILE = \"$UUID\";/g" "$PBXPROJ"
-          sed -i "" "s/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = \"\";/g" "$PBXPROJ"
+          sed -i "" "s/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = \"$PROFILE_NAME\";/g" "$PBXPROJ"
 
-          # Print after patching for debugging
           echo "=== After patch ==="
           grep -E "CODE_SIGN|PROVISIONING|DEVELOPMENT_TEAM" "$PBXPROJ" || true
 
-          # Increment build number
+          # Bump build number
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" \
             ios/Darklick/Info.plist
 
+          # Export for use in next step
           echo "CM_PROVISIONING_PROFILE=$UUID" >> $CM_ENV
+          echo "CM_PROFILE_NAME=$PROFILE_NAME" >> $CM_ENV
 
       - name: Build IPA
         script: |
@@ -85,29 +91,59 @@ workflows:
             -configuration Release \
             -sdk iphoneos \
             -archivePath build/Darklick.xcarchive \
+            archive \
             DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
             PROVISIONING_PROFILE="$CM_PROVISIONING_PROFILE" \
-            | tee build_output.txt; \
-          EXIT_CODE=${PIPESTATUS[0]}; \
-          if [ $EXIT_CODE -ne 0 ]; then \
-            echo "=== FULL ERROR ===" ; \
-            grep -E "error:|warning:|failed" build_output.txt | head -40 ; \
-            exit $EXIT_CODE ; \
+            PROVISIONING_PROFILE_SPECIFIER="$CM_PROFILE_NAME" \
+            2>&1 | tee build_output.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "=== BUILD ERRORS ==="
+            grep -E "error:" build_output.txt
+            exit $EXIT_CODE
           fi
 
       - name: Export IPA
         script: |
+          cat > /tmp/exportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>$TEAM_ID</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>$BUNDLE_ID</key>
+              <string>$CM_PROFILE_NAME</string>
+            </dict>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>compileBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+
           xcodebuild -exportArchive \
             -archivePath build/Darklick.xcarchive \
-            -exportOptionsPlist ios/exportOptions.plist \
-            -exportPath build
+            -exportOptionsPlist /tmp/exportOptions.plist \
+            -exportPath build \
+            2>&1 | tee export_output.txt
 
     artifacts:
       - build/**/*.ipa
       - build_output.txt
+      - export_output.txt
 
     publishing:
       app_store_connect:
