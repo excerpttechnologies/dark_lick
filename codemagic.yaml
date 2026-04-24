@@ -7,7 +7,7 @@ workflows:
       node: 18
       xcode: latest
       groups:
-        - appstore-connect   # Contains API key variables
+        - appstore-connect
 
       vars:
         XCODE_SCHEME: "Darklick"
@@ -15,49 +15,80 @@ workflows:
         BUNDLE_ID: "com.darklick.yourapp"
 
     scripts:
-      # 1️⃣ Install dependencies
+      # 1️⃣ Install deps
       - name: Install dependencies
         script: |
           npm install
 
-      # 2️⃣ Generate iOS project (REQUIRED for Windows users)
+      # 2️⃣ Generate iOS (REQUIRED)
       - name: Generate iOS project
         script: |
           npx expo prebuild --platform ios --clean
 
-      # 3️⃣ Install CocoaPods
+      # 3️⃣ Install pods
       - name: Install CocoaPods
         script: |
           cd ios
           pod install
           cd ..
 
-      # 4️⃣ Debug (optional but useful)
-      - name: Verify iOS setup
+      # 4️⃣ FORCE REMOVE MANUAL SIGNING (CRITICAL FIX)
+      - name: Fix code signing to Automatic
         script: |
-          echo "Listing ios folder:"
-          ls -la ios
+          echo "Fixing signing..."
 
-      # 5️⃣ Setup automatic code signing
+          # Replace all Manual signing references
+          sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' ios/Darklick.xcodeproj/project.pbxproj || true
+          sed -i '' 's/ProvisioningStyle = Manual/ProvisioningStyle = Automatic/g' ios/Darklick.xcodeproj/project.pbxproj || true
+
+          # Remove any forced provisioning profile
+          sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' ios/Darklick.xcodeproj/project.pbxproj || true
+
+      # 5️⃣ Apply Codemagic profiles
       - name: Set up code signing
         script: |
           xcode-project use-profiles
 
-      # 6️⃣ Build IPA (automatic signing handled here)
+      # 6️⃣ Build (force automatic signing)
       - name: Build IPA
         script: |
-          xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME"
+          xcodebuild \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/Darklick.xcarchive \
+            CODE_SIGN_STYLE=Automatic \
+            archive
+
+      # 7️⃣ Export IPA
+      - name: Export IPA
+        script: |
+          cat > ios/exportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath build/Darklick.xcarchive \
+            -exportOptionsPlist ios/exportOptions.plist \
+            -exportPath build
 
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/**/*.ipa
 
     publishing:
       app_store_connect:
-        api_key: 48MDJK7UF8
-        key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
-        issuer_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
 
       email:
         recipients:
