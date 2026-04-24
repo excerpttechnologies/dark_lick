@@ -6,26 +6,39 @@ workflows:
       xcode: latest
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.darklick.YOURREALID   # ← fix this
+        bundle_identifier: com.darklick.yourapp
       groups:
         - appstore-connect
       vars:
         XCODE_SCHEME: "Darklick"
         XCODE_WORKSPACE: "ios/Darklick.xcworkspace"
-        BUNDLE_ID: "com.darklick.YOURREALID"          # ← fix this
+        BUNDLE_ID: "com.darklick.yourapp"
         TEAM_ID: "5YYR6ZRQTZ"
+        APP_STORE_CONNECT_KEY_IDENTIFIER: "HN4XD3PCP2"
+        APP_STORE_CONNECT_ISSUER_ID: "48099666-494d-47dc-a15c-f9ecc09cfc21"
     scripts:
       - name: Install deps
         script: npm install
+
       - name: Generate iOS
         script: npx expo prebuild --platform ios --clean
+
       - name: Install pods
         script: cd ios && pod install && cd ..
+
       - name: Set up code signing
         script: |
           keychain initialize
+
+          app-store-connect fetch-signing-files \
+            com.darklick.yourapp \
+            --type IOS_APP_STORE \
+            --create \
+            --platform IOS
+
           keychain add-certificates
           xcode-project use-profiles
+
       - name: Build IPA
         script: |
           xcodebuild \
@@ -38,17 +51,20 @@ workflows:
             CODE_SIGN_STYLE=Manual \
             PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID \
             archive
+
       - name: Export IPA
         script: |
           xcodebuild -exportArchive \
             -archivePath build/Darklick.xcarchive \
             -exportOptionsPlist ios/exportOptions.plist \
             -exportPath build
+
     artifacts:
       - build/**/*.ipa
+
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY    # ← fixed
-        key_id: HN4XD3PCP2
-        issuer_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
