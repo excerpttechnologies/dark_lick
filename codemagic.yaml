@@ -1,7 +1,6 @@
 workflows:
   ios-release:
     name: iOS Release Build (Darklick)
-    max_build_duration: 60
 
     environment:
       node: 18
@@ -12,41 +11,26 @@ workflows:
       vars:
         XCODE_SCHEME: "Darklick"
         XCODE_WORKSPACE: "ios/Darklick.xcworkspace"
-        BUNDLE_ID: "com.darklick.yourapp"
         TEAM_ID: "5YYR6ZRQTZ"
 
     scripts:
-      - name: Install dependencies
-        script: |
-          npm install
+      - name: Install deps
+        script: npm install
 
-      - name: Generate iOS project
-        script: |
-          npx expo prebuild --platform ios --clean
+      - name: Generate iOS
+        script: npx expo prebuild --platform ios --clean
 
-      - name: Install CocoaPods
+      - name: Install pods
         script: |
-          cd ios
-          pod install
-          cd ..
+          cd ios && pod install && cd ..
 
-      # 🔥 Fix signing mode
-      - name: Fix signing to Automatic
+      - name: Fix signing
         script: |
           sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' ios/Darklick.xcodeproj/project.pbxproj || true
-          sed -i '' 's/ProvisioningStyle = Manual/ProvisioningStyle = Automatic/g' ios/Darklick.xcodeproj/project.pbxproj || true
           sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' ios/Darklick.xcodeproj/project.pbxproj || true
-
-      # 🔥 SET TEAM ID (THIS FIXES YOUR ERROR)
-      - name: Set Apple Team ID
-        script: |
           sed -i '' "s/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = $TEAM_ID;/g" ios/Darklick.xcodeproj/project.pbxproj || true
 
-      - name: Set up code signing
-        script: |
-          xcode-project use-profiles
-
-      - name: Build IPA
+      - name: Build IPA (FINAL FIX)
         script: |
           xcodebuild \
             -workspace "$XCODE_WORKSPACE" \
@@ -54,24 +38,13 @@ workflows:
             -configuration Release \
             -sdk iphoneos \
             -archivePath build/Darklick.xcarchive \
-            CODE_SIGN_STYLE=Automatic \
+            -allowProvisioningUpdates \
             DEVELOPMENT_TEAM=$TEAM_ID \
+            CODE_SIGN_STYLE=Automatic \
             archive
 
       - name: Export IPA
         script: |
-          cat > ios/exportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-          </dict>
-          </plist>
-          EOF
-
           xcodebuild -exportArchive \
             -archivePath build/Darklick.xcarchive \
             -exportOptionsPlist ios/exportOptions.plist \
