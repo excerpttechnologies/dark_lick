@@ -12,23 +12,43 @@ workflows:
         BUNDLE_ID: "com.darklick.yourapp"
 
     scripts:
+      # ✅ Install JS dependencies
       - name: Install dependencies
         script: |
           npm install
 
+      # ✅ CRITICAL: Generate ios/ on Mac (since you're on Windows)
+      - name: Generate iOS project (Expo Prebuild)
+        script: |
+          npx expo prebuild --platform ios --clean
+
+      # ✅ Install Pods (now it will work)
       - name: Install CocoaPods
         script: |
           cd ios
           pod install
           cd ..
 
-      # ✅ Auto-detect workspace (prevents YourApp.xcworkspace issue)
+      # ✅ Debug (very useful)
+      - name: Debug iOS folder
+        script: |
+          echo "Listing ios folder:"
+          ls ios
+
+      # ✅ Detect workspace safely
       - name: Detect Xcode workspace
         script: |
           WORKSPACE=$(find ios -name "*.xcworkspace" | head -1)
-          echo "Detected workspace: $WORKSPACE"
+
+          if [ -z "$WORKSPACE" ]; then
+            echo "❌ No workspace found!"
+            exit 1
+          fi
+
+          echo "Using workspace: $WORKSPACE"
           echo "WORKSPACE=$WORKSPACE" >> $CM_ENV
 
+      # ✅ Build archive
       - name: Build iOS archive
         script: |
           xcodebuild \
@@ -38,7 +58,7 @@ workflows:
             -sdk iphoneos \
             -archivePath build/$XCODE_SCHEME.xcarchive archive
 
-      # ✅ Create exportOptions.plist dynamically (avoids missing file error)
+      # ✅ Create export options
       - name: Create exportOptions.plist
         script: |
           cat > ios/exportOptions.plist <<EOF
@@ -53,6 +73,7 @@ workflows:
           </plist>
           EOF
 
+      # ✅ Export IPA
       - name: Export IPA
         script: |
           xcodebuild -exportArchive \
