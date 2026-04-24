@@ -1,12 +1,10 @@
 workflows:
   ios-release:
     name: iOS Release Build (Darklick)
+
     environment:
       node: 18
       xcode: latest
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.darklick.yourapp
       groups:
         - appstore-connect
       vars:
@@ -16,6 +14,7 @@ workflows:
         TEAM_ID: "5YYR6ZRQTZ"
         APP_STORE_CONNECT_KEY_IDENTIFIER: "HN4XD3PCP2"
         APP_STORE_CONNECT_ISSUER_ID: "48099666-494d-47dc-a15c-f9ecc09cfc21"
+
     scripts:
       - name: Install deps
         script: npm install
@@ -29,13 +28,11 @@ workflows:
       - name: Set up code signing
         script: |
           keychain initialize
-
           app-store-connect fetch-signing-files \
             com.darklick.yourapp \
             --type IOS_APP_STORE \
             --create \
             --platform IOS
-
           keychain add-certificates
           xcode-project use-profiles
 
