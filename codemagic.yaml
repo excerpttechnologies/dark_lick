@@ -12,7 +12,7 @@ workflows:
 
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.darklick.app   # ← CHANGE if different
+        bundle_identifier: com.darklick.app   # change if needed
 
     scripts:
       - name: Install dependencies
@@ -38,4 +38,5 @@ workflows:
 
     publishing:
       app_store_connect:
+        integration: app_store_connect
         submit_to_testflight: true
