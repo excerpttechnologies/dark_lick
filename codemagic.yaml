@@ -7,7 +7,7 @@ workflows:
       node: 18
       xcode: latest
       groups:
-        - appstore-connect
+        - appstore-connect   # Contains API key variables
 
       vars:
         XCODE_SCHEME: "Darklick"
@@ -15,31 +15,35 @@ workflows:
         BUNDLE_ID: "com.darklick.yourapp"
 
     scripts:
+      # 1️⃣ Install dependencies
       - name: Install dependencies
         script: |
           npm install
 
-      # ✅ REQUIRED (you removed this earlier)
+      # 2️⃣ Generate iOS project (REQUIRED for Windows users)
       - name: Generate iOS project
         script: |
           npx expo prebuild --platform ios --clean
 
+      # 3️⃣ Install CocoaPods
       - name: Install CocoaPods
         script: |
           cd ios
           pod install
           cd ..
 
-      - name: Debug iOS folder
+      # 4️⃣ Debug (optional but useful)
+      - name: Verify iOS setup
         script: |
+          echo "Listing ios folder:"
           ls -la ios
 
-      # ✅ Code signing (correct way)
+      # 5️⃣ Setup automatic code signing
       - name: Set up code signing
         script: |
           xcode-project use-profiles
 
-      # ✅ Build
+      # 6️⃣ Build IPA (automatic signing handled here)
       - name: Build IPA
         script: |
           xcode-project build-ipa \
@@ -57,5 +61,4 @@ workflows:
 
       email:
         recipients:
-          - excerptechnologies1@gmail.com
           - excerptechnologies1@gmail.com
