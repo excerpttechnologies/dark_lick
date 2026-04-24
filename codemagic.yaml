@@ -3,7 +3,7 @@ workflows:
     name: iOS Release Build (Darklick)
     environment:
       node: 18
-      xcode: latest
+      xcode: 16.2
       groups:
         - appstore-connect
       vars:
@@ -28,7 +28,7 @@ workflows:
           keychain initialize
 
           app-store-connect fetch-signing-files \
-            com.darklick.yourapp \
+            "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create \
             --platform IOS
@@ -36,14 +36,23 @@ workflows:
           keychain add-certificates
           xcode-project use-profiles
 
-          # Print profile UUID for debugging
-          echo "Installed profiles:"
-          ls ~/Library/MobileDevice/Provisioning\ Profiles/
-          
-          # Get the UUID of the installed profile
-          PROFILE_PATH=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -1)
+          # Newest profile first
+          PROFILE_PATH=$(ls -t ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -1)
           UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID raw -)
           echo "Profile UUID: $UUID"
+
+          # Patch pbxproj directly
+          sed -i "" "s/PROVISIONING_PROFILE = .*/PROVISIONING_PROFILE = \"$UUID\";/g" \
+            ios/Darklick.xcodeproj/project.pbxproj
+          sed -i "" "s/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = \"\";/g" \
+            ios/Darklick.xcodeproj/project.pbxproj
+          sed -i "" "s/CODE_SIGN_STYLE = .*/CODE_SIGN_STYLE = Manual;/g" \
+            ios/Darklick.xcodeproj/project.pbxproj
+
+          # Increment build number
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" \
+            ios/Darklick/Info.plist
+
           echo "CM_PROVISIONING_PROFILE=$UUID" >> $CM_ENV
 
       - name: Build IPA
@@ -56,7 +65,7 @@ workflows:
             -archivePath build/Darklick.xcarchive \
             DEVELOPMENT_TEAM=$TEAM_ID \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="iPhone Distribution" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID \
             PROVISIONING_PROFILE=$CM_PROVISIONING_PROFILE \
             archive
