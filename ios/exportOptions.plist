@@ -3,12 +3,15 @@
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>app-store</string>
+    <string>app-store-connect</string>
     <key>teamID</key>
     <string>5YYR6ZRQTZ</string>
-    <key>uploadBitcode</key>
-    <false/>
-    <key>uploadSymbols</key>
-    <true/>
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.darklick.yourapp</key>
+        <string>match AppStore com.darklick.yourapp</string>
+    </dict>
 </dict>
 </plist>
