@@ -7,11 +7,11 @@ workflows:
       node: 18
       xcode: latest
       groups:
-        - appstore-connect                    # ← Must match your environment group name
+        - appstore-connect
 
       vars:
         XCODE_SCHEME: "Darklick"
-        BUNDLE_ID: "com.darklick.yourapp"    # ← Change this to your real bundle ID
+        BUNDLE_ID: "com.darklick.yourapp"   # ← Update with your real bundle ID
 
     scripts:
       - name: Install dependencies
@@ -24,10 +24,17 @@ workflows:
           pod install
           cd ..
 
+      # ✅ Auto-detect the correct workspace
+      - name: Detect Xcode workspace
+        script: |
+          WORKSPACE=$(find . -name "*.xcworkspace" | head -1)
+          echo "Detected workspace: $WORKSPACE"
+          echo "WORKSPACE=$WORKSPACE" >> $CM_ENV
+
       - name: Build iOS archive
         script: |
           xcode-project build-ipa \
-            --workspace "ios/Runner.xcworkspace" \
+            --workspace "$WORKSPACE" \
             --scheme "$XCODE_SCHEME" \
             --export-method app-store
 
