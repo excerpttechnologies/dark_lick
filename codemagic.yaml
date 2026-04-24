@@ -11,6 +11,7 @@ workflows:
       vars:
         XCODE_SCHEME: "Darklick"
         XCODE_WORKSPACE: "ios/Darklick.xcworkspace"
+        BUNDLE_ID: "com.darklick.app"
         TEAM_ID: "5YYR6ZRQTZ"
 
     scripts:
@@ -26,11 +27,14 @@ workflows:
 
       - name: Fix signing
         script: |
-          sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' ios/Darklick.xcodeproj/project.pbxproj || true
-          sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' ios/Darklick.xcodeproj/project.pbxproj || true
-          sed -i '' "s/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = $TEAM_ID;/g" ios/Darklick.xcodeproj/project.pbxproj || true
+          sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' \
+            ios/Darklick.xcodeproj/project.pbxproj || true
+          sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' \
+            ios/Darklick.xcodeproj/project.pbxproj || true
+          sed -i '' "s/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = $TEAM_ID;/g" \
+            ios/Darklick.xcodeproj/project.pbxproj || true
 
-      - name: Build IPA (FINAL FIX)
+      - name: Build IPA
         script: |
           xcodebuild \
             -workspace "$XCODE_WORKSPACE" \
@@ -39,8 +43,10 @@ workflows:
             -sdk iphoneos \
             -archivePath build/Darklick.xcarchive \
             -allowProvisioningUpdates \
+            -allowProvisioningDeviceRegistration \
             DEVELOPMENT_TEAM=$TEAM_ID \
             CODE_SIGN_STYLE=Automatic \
+            PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID \
             archive
 
       - name: Export IPA
@@ -48,13 +54,15 @@ workflows:
           xcodebuild -exportArchive \
             -archivePath build/Darklick.xcarchive \
             -exportOptionsPlist ios/exportOptions.plist \
-            -exportPath build
+            -exportPath build \
+            -allowProvisioningUpdates
 
     artifacts:
       - build/**/*.ipa
 
     publishing:
       app_store_connect:
-        api_key: 48MDJK7UF8
-        key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
-        issuer_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K
+        api_key: 48MDJK7UF8        # ✅ store .p8 content in Codemagic secret
+        key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21                # ✅ this is your actual key_id
+        issuer_id:  MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K    # ✅ UUID from App Store Connect
+        submit_to_testflight: true
