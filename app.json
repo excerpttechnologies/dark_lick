@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.darklick.app"
+      "bundleIdentifier": "com.darklick.yourapp"
     },
     "android": {
-      "package": "com.darklick.app",
+      "package": "com.darklick.yourapp",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
