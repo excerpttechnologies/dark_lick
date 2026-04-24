@@ -5,9 +5,11 @@ workflows:
     environment:
       node: 18
       xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.darklick.app
       groups:
         - appstore-connect
-
       vars:
         XCODE_SCHEME: "Darklick"
         XCODE_WORKSPACE: "ios/Darklick.xcworkspace"
@@ -22,17 +24,7 @@ workflows:
         script: npx expo prebuild --platform ios --clean
 
       - name: Install pods
-        script: |
-          cd ios && pod install && cd ..
-
-      - name: Fix signing
-        script: |
-          sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' \
-            ios/Darklick.xcodeproj/project.pbxproj || true
-          sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' \
-            ios/Darklick.xcodeproj/project.pbxproj || true
-          sed -i '' "s/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = $TEAM_ID;/g" \
-            ios/Darklick.xcodeproj/project.pbxproj || true
+        script: cd ios && pod install && cd ..
 
       - name: Build IPA
         script: |
@@ -62,7 +54,7 @@ workflows:
 
     publishing:
       app_store_connect:
-        api_key: 48MDJK7UF8        # ✅ store .p8 content in Codemagic secret
-        key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21                # ✅ this is your actual key_id
-        issuer_id:  MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K    # ✅ UUID from App Store Connect
+        api_key: 48MDJK7UF8
+        key_id: 48099666-494d-47dc-a15c-f9ecc09cfc21
+        issuer_id: MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgqZnpGpGsabjJVIAIkF8/ceJokBr2u8csWU6GhUuBWCagCgYIKoZIzj0DAQehRANCAATc8sSBAh2SUyGJDofyrNNksUG8a5S2lYtM/WeQyf7MKiqKBnREHpA7EZT585XN6rj7jq2QtKAIFmePHpMjwf5K
         submit_to_testflight: true
