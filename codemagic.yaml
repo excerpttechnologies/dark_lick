@@ -2,12 +2,14 @@ workflows:
   ios-release:
     name: iOS Release Build (Darklick)
 
+    integrations:
+      app_store_connect: CodemagicKey
+
     environment:
       node: 18
       xcode: latest
       groups:
         - appstore-connect
-
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.darklick.yourapp
